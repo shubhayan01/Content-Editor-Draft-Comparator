@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Content Editor — Precision Draft Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#18181a;--ink2:#3a3a3c;--ink3:#6b6b70;--ink4:#9a9a9f;
+  --paper:#fafaf8;--paper2:#f3f2ee;--paper3:#eae9e3;--paper4:#dddcd6;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --accent:#1a5fff;--accent-lt:rgba(26,95,255,0.08);--accent-bd:rgba(26,95,255,0.22);
+  --green:#147a3b;--green-lt:rgba(20,122,59,0.08);--green-bd:rgba(20,122,59,0.2);
+  --red:#c0321f;--red-lt:rgba(192,50,31,0.08);--red-bd:rgba(192,50,31,0.2);
+  --amber:#9a5a00;--amber-lt:rgba(154,90,0,0.08);--amber-bd:rgba(154,90,0,0.22);
+  --purple:#6340c8;--purple-lt:rgba(99,64,200,0.09);--purple-bd:rgba(99,64,200,0.22);
+  --teal:#1a7a72;--teal-lt:rgba(26,122,114,0.09);--teal-bd:rgba(26,122,114,0.22);
+  --r:8px;--r2:12px;
+  --mono:'DM Mono',monospace;--serif:'Fraunces',serif;--sans:'DM Sans',-apple-system,sans-serif;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --ink:#f0f0ec;--ink2:#c8c8c4;--ink3:#8a8a88;--ink4:#5a5a58;
+    --paper:#141413;--paper2:#1e1e1c;--paper3:#272725;--paper4:#323230;
+    --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+    --accent:#5b8bff;--accent-lt:rgba(91,139,255,0.1);--accent-bd:rgba(91,139,255,0.28);
+    --green:#42c474;--green-lt:rgba(66,196,116,0.1);--green-bd:rgba(66,196,116,0.25);
+    --red:#f07060;--red-lt:rgba(240,112,96,0.1);--red-bd:rgba(240,112,96,0.25);
+    --amber:#e4a040;--amber-lt:rgba(228,160,64,0.1);--amber-bd:rgba(228,160,64,0.25);
+    --purple:#a080ff;--purple-lt:rgba(160,128,255,0.1);--purple-bd:rgba(160,128,255,0.25);
+    --teal:#40c4b8;--teal-lt:rgba(64,196,184,0.1);--teal-bd:rgba(64,196,184,0.25);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.6}
+body{min-height:100vh}
+.shell{max-width:980px;margin:0 auto;padding:2rem 1.5rem 6rem}
+
+.hdr{margin-bottom:2rem}
+.hdr-eyebrow{font-family:var(--mono);font-size:11px;color:var(--ink3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.hdr h1{font-family:var(--serif);font-size:28px;font-weight:500;letter-spacing:-.4px;line-height:1.2;color:var(--ink)}
+.hdr h1 em{font-style:italic;font-weight:300}
+.hdr-sub{font-size:13px;color:var(--ink3);margin-top:6px;line-height:1.7}
+
+.card{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.4rem;margin-bottom:.85rem}
+.label{font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+
+.api-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
+.inp{width:100%;background:var(--paper);border:1px solid var(--border2);border-radius:var(--r);padding:8px 11px;font-size:13px;color:var(--ink);font-family:var(--mono);outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--ink4)}
+.sel{background:var(--paper);border:1px solid var(--border2);border-radius:var(--r);padding:8px 11px;font-size:13px;color:var(--ink);outline:none;cursor:pointer}
+
+.hint{font-size:12px;color:var(--ink4);margin-top:7px}
+.hint a{color:var(--accent);text-decoration:none}
+
+/* ── Text input panels ── */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.85rem}
+.text-panel{background:var(--paper2);border:1.5px solid var(--border2);border-radius:var(--r2);overflow:hidden;transition:border-color .2s}
+.text-panel.loaded{border-color:var(--green-bd);background:var(--green-lt)}
+.text-panel.loaded .tp-header{border-bottom-color:var(--green-bd)}
+.tp-header{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--paper3)}
+.tp-title{font-family:var(--serif);font-size:13px;font-weight:500}
+.tp-status{font-family:var(--mono);font-size:10px;color:var(--ink4)}
+.text-panel.loaded .tp-status{color:var(--green)}
+.tp-actions{display:flex;gap:6px}
+.tp-btn{padding:4px 10px;border-radius:6px;font-size:11px;font-family:var(--mono);cursor:pointer;border:1px solid var(--border2);background:var(--paper);color:var(--ink2);transition:all .12s}
+.tp-btn:hover{background:var(--paper3);color:var(--ink)}
+.tp-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tp-btn.primary:hover{filter:brightness(1.1)}
+.tp-textarea{width:100%;min-height:130px;padding:10px 12px;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:12px;color:var(--ink);resize:vertical;line-height:1.6}
+.tp-textarea::placeholder{color:var(--ink4)}
+.tp-dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80px;border:1.5px dashed var(--border2);border-radius:var(--r);margin:8px;cursor:pointer;transition:all .2s;padding:12px}
+.tp-dropzone:hover,.tp-dropzone.drag{border-color:var(--accent);background:var(--accent-lt)}
+.tp-dropzone-label{font-size:12px;color:var(--ink3);text-align:center}
+.tp-dropzone input[type=file]{display:none}
+
+.opts-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.opt-check{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);cursor:pointer;user-select:none}
+.opt-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+
+.run{width:100%;padding:12px;border-radius:var(--r2);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;background:var(--accent);color:#fff;border:none;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:10px}
+.run:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}
+.run:disabled{background:var(--paper3);color:var(--ink4);cursor:not-allowed;transform:none}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;display:none;flex-shrink:0}
+.run.busy .spin{display:block}
+.run.busy .btn-txt{opacity:.5}
+
+.status{margin:.6rem 0;padding:9px 13px;border-radius:var(--r);font-size:13px;display:none}
+.status.err{background:var(--red-lt);border:1px solid var(--red-bd);color:var(--red);display:block}
+.status.info{background:var(--accent-lt);border:1px solid var(--accent-bd);color:var(--accent);display:block}
+
+#results{display:none;margin-top:2rem;animation:fadeUp .35s ease}
+.sec-hdr{display:flex;align-items:center;gap:12px;margin:2rem 0 .9rem}
+.sec-hdr:first-child{margin-top:0}
+.sec-hdr-title{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap}
+.sec-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.verdict{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem}
+.verdict-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;flex-wrap:wrap}
+.verdict-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink4);margin-bottom:5px}
+.verdict-score{font-family:var(--serif);font-size:48px;font-weight:600;line-height:1;letter-spacing:-2px}
+.verdict-cls{font-size:13px;font-weight:400;margin-top:4px;color:var(--ink2)}
+.verdict-summary{flex:1;min-width:200px}
+.verdict-summary p{font-size:13px;line-height:1.8;color:var(--ink2)}
+.verdict-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:1.1rem;padding-top:1.1rem;border-top:1px solid var(--border)}
+.vpill{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:5px}
+.vpill-g{background:var(--green-lt);color:var(--green);border:1px solid var(--green-bd)}
+.vpill-r{background:var(--red-lt);color:var(--red);border:1px solid var(--red-bd)}
+.vpill-a{background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber-bd)}
+.vpill-p{background:var(--purple-lt);color:var(--purple);border:1px solid var(--purple-bd)}
+.vpill-t{background:var(--teal-lt);color:var(--teal);border:1px solid var(--teal-bd)}
+.vpill-b{background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent-bd)}
+
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.stat{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r2);padding:.8rem .9rem}
+.stat-lbl{font-family:var(--mono);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;line-height:1.4}
+.stat-val{font-family:var(--serif);font-size:22px;font-weight:500;letter-spacing:-1px;line-height:1}
+.stat-sub{font-size:10.5px;color:var(--ink4);margin-top:4px;line-height:1.4;font-family:var(--mono)}
+.col-g{color:var(--green)}.col-r{color:var(--red)}.col-a{color:var(--amber)}.col-p{color:var(--purple)}.col-t{color:var(--teal)}.col-b{color:var(--accent)}
+
+.change-list{display:grid;gap:5px}
+.change-item{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.ci-hdr{display:flex;align-items:center;gap:9px;padding:9px 13px;cursor:pointer;user-select:none;transition:background .12s}
+.ci-hdr:hover{background:var(--paper3)}
+.ci-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ci-dot-mod{background:var(--amber)}.ci-dot-add{background:var(--green)}.ci-dot-rem{background:var(--red)}.ci-dot-sem{background:var(--purple)}.ci-dot-voice{background:var(--teal)}
+.ci-kind{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0;width:70px}
+.ci-preview{flex:1;font-family:var(--mono);font-size:11.5px;color:var(--ink2);min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ci-badge{font-family:var(--mono);font-size:9.5px;padding:2px 8px;border-radius:12px;flex-shrink:0}
+.ci-badge-high{background:var(--red-lt);color:var(--red);border:1px solid var(--red-bd)}
+.ci-badge-med{background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber-bd)}
+.ci-badge-low{background:var(--green-lt);color:var(--green);border:1px solid var(--green-bd)}
+.ci-badge-sem{background:var(--purple-lt);color:var(--purple);border:1px solid var(--purple-bd)}
+.ci-badge-voice{background:var(--teal-lt);color:var(--teal);border:1px solid var(--teal-bd)}
+.ci-arrow{font-size:10px;color:var(--ink4);transition:transform .15s;flex-shrink:0}
+.ci-arrow.open{transform:rotate(90deg)}
+.ci-body{display:none;padding:11px 13px;border-top:1px solid var(--border);background:var(--paper)}
+.ci-body.open{display:block}
+.ci-comparison{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}
+.ci-side{padding:9px 11px;border-radius:var(--r)}
+.ci-side-before{background:var(--red-lt);border:1px solid var(--red-bd)}
+.ci-side-after{background:var(--green-lt);border:1px solid var(--green-bd)}
+.ci-side-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;color:var(--ink3)}
+.ci-side-text{font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--ink);word-break:break-word;white-space:pre-wrap}
+.ci-analysis{font-size:13px;line-height:1.75;color:var(--ink2)}
+.ci-analysis-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-bottom:4px}
+
+.wd-del{background:var(--red-lt);color:var(--red);text-decoration:line-through;border-radius:2px;padding:0 2px;font-family:var(--mono);font-size:11px}
+.wd-ins{background:var(--green-lt);color:var(--green);border-radius:2px;padding:0 2px;font-family:var(--mono);font-size:11px}
+.wd-same{color:var(--ink3);font-family:var(--mono);font-size:11px}
+
+.sec-grid{display:grid;gap:5px}
+.sg{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.sg-hdr{display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer;user-select:none;transition:background .12s}
+.sg-hdr:hover{background:var(--paper3)}
+.sg-title{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--serif)}
+.sg-meta{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.sg-badge{font-family:var(--mono);font-size:9.5px;font-weight:500;padding:2px 8px;border-radius:12px}
+.sg-badge-h{background:var(--red-lt);color:var(--red);border:1px solid var(--red-bd)}
+.sg-badge-m{background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber-bd)}
+.sg-badge-l{background:var(--green-lt);color:var(--green);border:1px solid var(--green-bd)}
+.sg-badge-n{background:var(--paper3);color:var(--ink4);border:1px solid var(--border)}
+.sg-body{display:none;padding:11px 13px;border-top:1px solid var(--border);background:var(--paper)}
+.sg-body.open{display:block}
+.sg-bar-row{display:flex;align-items:center;gap:9px;margin-bottom:5px}
+.sg-bar-lbl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);width:58px;text-align:right;flex-shrink:0}
+.sg-bar-track{flex:1;height:3px;background:var(--paper3);border-radius:2px;overflow:hidden}
+.sg-bar-fill{height:100%;border-radius:2px}
+.sg-bar-count{font-family:var(--mono);font-size:9.5px;color:var(--ink4);width:30px;text-align:right;flex-shrink:0}
+.sg-preview{font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--ink2);margin-top:8px}
+
+.diff-wrap{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.diff-toolbar{padding:8px 13px;background:var(--paper3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.diff-tabs{display:flex;gap:4px}
+.diff-tab{padding:4px 12px;font-size:11.5px;font-family:var(--mono);cursor:pointer;border-radius:6px;color:var(--ink3);transition:all .12s;background:none;border:1px solid transparent}
+.diff-tab.act{background:var(--paper);color:var(--ink);border-color:var(--border2)}
+.diff-tab:hover:not(.act){color:var(--ink)}
+.diff-body{max-height:420px;overflow-y:auto;font-family:var(--mono);font-size:11.5px;line-height:1.7}
+.diff-panel{display:none}.diff-panel.show{display:block}
+.dl{display:flex;min-height:22px}
+.dl:hover{background:rgba(128,128,100,0.04)}
+.dl-ln{width:66px;min-width:66px;text-align:right;padding:2px 9px 2px 0;color:var(--ink4);font-size:9.5px;border-right:1px solid var(--border);display:flex;align-items:flex-start;justify-content:flex-end;flex-shrink:0;gap:2px;padding-top:3px}
+.dl-sym{width:19px;min-width:19px;text-align:center;font-weight:500;font-size:10.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding-top:2px}
+.dl-txt{padding:2px 9px;word-break:break-word;white-space:pre-wrap;flex:1;display:flex;align-items:flex-start;flex-wrap:wrap;gap:2px;font-size:11.5px;line-height:1.6}
+.la{background:rgba(20,122,59,.05)}.la .dl-sym{color:var(--green)}
+.lr{background:rgba(192,50,31,.05)}.lr .dl-sym{color:var(--red)}
+.lm{background:rgba(154,90,0,.04)}.lm .dl-sym{color:var(--amber)}
+.lv{background:rgba(26,122,114,.04)}.lv .dl-sym{color:var(--teal)}
+.ls{background:rgba(99,64,200,.04)}.ls .dl-sym{color:var(--purple)}
+.lc .dl-sym{color:transparent}
+.lsep{background:var(--paper3)}.lsep .dl-txt{color:var(--ink4);font-style:italic;font-size:10px}
+
+.ai-box{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r2);padding:1.5rem;position:relative}
+.ai-box::before{content:'Editorial analysis';position:absolute;top:-9px;left:16px;background:var(--paper2);padding:0 7px;font-family:var(--mono);font-size:9px;color:var(--ink4);text-transform:uppercase;letter-spacing:.1em;border:1px solid var(--border);border-radius:4px}
+.ai-box p{font-size:13.5px;line-height:1.85;color:var(--ink2);margin-bottom:.7rem}
+.ai-box p:last-child{margin-bottom:0}
+.ai-box strong{font-weight:500;color:var(--ink)}
+.ai-box em{font-style:italic;font-family:var(--serif)}
+.ai-box code{background:var(--paper3);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:11.5px}
+.ai-box h4{font-family:var(--serif);font-size:15px;font-weight:500;margin:1.1rem 0 .45rem;color:var(--ink)}
+.ai-box h4:first-child{margin-top:0}
+.ai-box ul,.ai-box ol{padding-left:1.3rem;margin-bottom:.7rem}
+.ai-box li{font-size:13.5px;line-height:1.8;margin-bottom:.25rem;color:var(--ink2)}
+.ai-box blockquote{border-left:2px solid var(--border2);padding-left:.9rem;margin:.7rem 0;color:var(--ink3);font-style:italic;font-family:var(--serif);font-size:14px}
+.ai-loading{color:var(--ink4);font-style:italic;display:flex;align-items:center;gap:9px;font-size:12.5px;font-family:var(--mono)}
+.ai-loading::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--ink4);animation:pulse 1.2s ease-in-out infinite}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+@media(max-width:640px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .upload-grid{grid-template-columns:1fr}
+  .ci-comparison{grid-template-columns:1fr}
+  .api-row{grid-template-columns:1fr;grid-template-rows:auto auto auto}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="hdr">
+  <div class="hdr-eyebrow">Precision editorial analysis</div>
+  <h1>Content Editor <em>Draft Comparator</em></h1>
+  <div class="hdr-sub">Semantic-aware diff — understands idea equivalence, voice shifts, and actual editorial value.</div>
+</div>
+
+<!-- API Key -->
+<div class="card">
+  <div class="label">Groq API Key</div>
+  <div class="api-row">
+    <input class="inp" type="password" id="groqKey" placeholder="gsk_…" autocomplete="off"/>
+    <select class="sel" id="modelSel">
+      <option value="llama-3.3-70b-versatile">LLaMA 3.3 70B</option>
+      <option value="llama-3.1-8b-instant">LLaMA 3.1 8B (fast)</option>
+      <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+    </select>
+  </div>
+  <p class="hint">Free key at <a href="https://console.groq.com" target="_blank">console.groq.com</a> — sent only to Groq, never stored.</p>
+  <div class="opts-row">
+    <label class="opt-check"><input type="checkbox" id="optSemantic" checked> Semantic equivalence detection</label>
+    <label class="opt-check"><input type="checkbox" id="optVoice" checked> Active / passive awareness</label>
+    <label class="opt-check"><input type="checkbox" id="optValue" checked> Value delta scoring</label>
+  </div>
+</div>
+
+<!-- Text input panels -->
+<div class="upload-grid">
+  <!-- First Draft -->
+  <div class="text-panel" id="panel-ai">
+    <div class="tp-header">
+      <span class="tp-title">✦ First Draft</span>
+      <span class="tp-status" id="stat-ai">empty</span>
+      <div class="tp-actions">
+        <label class="tp-btn primary" style="cursor:pointer">
+          Upload file
+          <input type="file" accept=".txt,.md,.markdown,.text" id="file-ai" style="display:none">
+        </label>
+        <button class="tp-btn" onclick="clearText('ai')">Clear</button>
+      </div>
+    </div>
+    <textarea class="tp-textarea" id="text-ai" placeholder="Paste your first draft here — or upload a .txt / .md file above…" oninput="onTextChange('ai')"></textarea>
+  </div>
+  <!-- Edited Version -->
+  <div class="text-panel" id="panel-final">
+    <div class="tp-header">
+      <span class="tp-title">✒ Edited Version</span>
+      <span class="tp-status" id="stat-final">empty</span>
+      <div class="tp-actions">
+        <label class="tp-btn primary" style="cursor:pointer">
+          Upload file
+          <input type="file" accept=".txt,.md,.markdown,.text" id="file-final" style="display:none">
+        </label>
+        <button class="tp-btn" onclick="clearText('final')">Clear</button>
+      </div>
+    </div>
+    <textarea class="tp-textarea" id="text-final" placeholder="Paste your edited version here — or upload a .txt / .md file above…" oninput="onTextChange('final')"></textarea>
+  </div>
+</div>
+
+<button class="run" id="runBtn" onclick="runAnalysis()" disabled>
+  <div class="spin"></div>
+  <span class="btn-txt">Analyze Changes</span>
+</button>
+<div class="status" id="statusBar"></div>
+
+<!-- RESULTS -->
+<div id="results">
+  <div class="sec-hdr"><span class="sec-hdr-title">Editorial verdict</span></div>
+  <div class="verdict">
+    <div class="verdict-top">
+      <div>
+        <div class="verdict-label">Edit intensity</div>
+        <div class="verdict-score col-p" id="v-score">—</div>
+        <div class="verdict-cls" id="v-cls">—</div>
+      </div>
+      <div class="verdict-summary">
+        <div class="verdict-label">At a glance</div>
+        <p id="v-summary">Computing…</p>
+      </div>
+    </div>
+    <div class="verdict-pills" id="v-pills"></div>
+  </div>
+
+  <div class="sec-hdr"><span class="sec-hdr-title">Overview metrics</span></div>
+  <div class="stats">
+    <div class="stat"><div class="stat-lbl">Words changed</div><div class="stat-val col-a" id="s-wch">—</div><div class="stat-sub" id="s-wch-s">inline edits</div></div>
+    <div class="stat"><div class="stat-lbl">Words added</div><div class="stat-val col-g" id="s-wadd">—</div><div class="stat-sub" id="s-wadd-s">net new</div></div>
+    <div class="stat"><div class="stat-lbl">Words removed</div><div class="stat-val col-r" id="s-wrem">—</div><div class="stat-sub" id="s-wrem-s">cut out</div></div>
+    <div class="stat"><div class="stat-lbl">Semantic equiv.</div><div class="stat-val col-p" id="s-sem">—</div><div class="stat-sub">same idea, diff words</div></div>
+    <div class="stat"><div class="stat-lbl">Voice shifts</div><div class="stat-val col-t" id="s-voice">—</div><div class="stat-sub">active↔passive</div></div>
+    <div class="stat"><div class="stat-lbl">Value delta</div><div class="stat-val col-b" id="s-val">—</div><div class="stat-sub" id="s-val-s">editorial gain</div></div>
+  </div>
+
+  <div class="sec-hdr"><span class="sec-hdr-title">Diff view</span></div>
+  <div class="diff-wrap">
+    <div class="diff-toolbar">
+      <div class="diff-tabs">
+        <button class="diff-tab act" onclick="switchTab('line')">Line diff</button>
+        <button class="diff-tab" onclick="switchTab('word')">Word diff</button>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <span class="vpill vpill-g" id="pill-add">+0</span>
+        <span class="vpill vpill-r" id="pill-rem">−0</span>
+        <span class="vpill vpill-a" id="pill-mod">~0</span>
+        <span class="vpill vpill-p" id="pill-sem">◈0 equiv</span>
+        <span class="vpill vpill-t" id="pill-voice">⇄0 voice</span>
+      </div>
+    </div>
+    <div class="diff-body">
+      <div class="diff-panel show" id="panel-line"></div>
+      <div class="diff-panel" id="panel-word"></div>
+    </div>
+  </div>
+
+  <div class="sec-hdr"><span class="sec-hdr-title">Change breakdown</span></div>
+  <div class="change-list" id="changeList"></div>
+
+  <div class="sec-hdr"><span class="sec-hdr-title">Changes by section</span></div>
+  <div class="sec-grid" id="secsGrid"></div>
+
+  <div class="sec-hdr"><span class="sec-hdr-title">AI editorial analysis</span></div>
+  <div class="ai-box" id="aiBox">
+    <p class="ai-loading">Waiting for analysis</p>
+  </div>
+</div>
+</div>
+
+<script>
+// ── State
+const texts = { ai: null, final: null };
+
+// ── DOM helpers
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const el  = id => document.getElementById(id);
+const tick = () => new Promise(r => setTimeout(r, 10));
+
+// ── Text handling
+function onTextChange(key) {
+  const val = el('text-'+key).value;
+  texts[key] = val.trim().length > 0 ? val : null;
+  const wc = val.trim() ? wordCount(val) : 0;
+  el('stat-'+key).textContent = val.trim() ? wc+' words' : 'empty';
+  el('panel-'+key).classList.toggle('loaded', !!texts[key]);
+  checkReady();
+}
+
+function clearText(key) {
+  el('text-'+key).value = '';
+  texts[key] = null;
+  el('stat-'+key).textContent = 'empty';
+  el('panel-'+key).classList.remove('loaded');
+  checkReady();
+}
+
+function wordCount(s) { return (s.match(/\S+/g)||[]).length; }
+
+// ── File upload via visible input inside label
+function setupFileInput(key) {
+  const inp = el('file-'+key);
+  inp.addEventListener('change', function() {
+    const f = this.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      const content = ev.target.result;
+      el('text-'+key).value = content;
+      onTextChange(key);
+      el('stat-'+key).textContent = '✓ ' + f.name + ' · ' + wordCount(content) + ' words';
+    };
+    r.readAsText(f, 'UTF-8');
+    // Reset so same file can be re-uploaded
+    this.value = '';
+  });
+}
+
+setupFileInput('ai');
+setupFileInput('final');
+
+function checkReady() {
+  const k = el('groqKey').value.trim();
+  el('runBtn').disabled = !(texts.ai && texts.final && k.length > 10);
+}
+el('groqKey').addEventListener('input', checkReady);
+
+function setStatus(msg, type) {
+  const s = el('statusBar');
+  s.textContent = msg;
+  s.className = 'status ' + (type||'');
+}
+function setBusy(yes, msg) {
+  el('runBtn').disabled = yes;
+  el('runBtn').classList.toggle('busy', yes);
+  if (yes && msg) setStatus(msg, 'info');
+}
+function switchTab(t) {
+  document.querySelectorAll('.diff-tab').forEach((e,i)=>e.classList.toggle('act',(i===0)===(t==='line')));
+  el('panel-line').classList.toggle('show', t==='line');
+  el('panel-word').classList.toggle('show', t==='word');
+}
+function toggleBlock(bodyId, arrowId) {
+  const b=el(bodyId), a=el(arrowId);
+  if(b) b.classList.toggle('open');
+  if(a) a.classList.toggle('open');
+}
+
+// ── Normalise
+function norm(s){ return s.replace(/\r/g,'').replace(/\s+/g,' ').trim(); }
+function normLow(s){ return norm(s).toLowerCase(); }
+function words(s){ return (s||'').match(/\S+/g)||[]; }
+function wordsLow(s){ return words(normLow(s)); }
+
+function tokenizeLines(text){
+  return text.split('\n').map((orig,i)=>({ orig:orig.replace(/\r/g,''), norm:normLow(orig), n:i+1 }));
+}
+function contentLines(lines){ return lines.filter(l=>l.norm.trim().length>0); }
+
+// ── Semantic similarity
+const STOP = new Set(['a','an','the','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','shall','can','need','it','its','this','that','these','those','he','she','they','we','i','you','his','her','their','our','my','your','which','who','when','where','how','why','what','all','any','both','each','few','more','most','other','some','such','no','not','only','same','so','than','then','there','too','very','just','about','up','down','into','through','after','before','over']);
+
+function keyWords(s){ return new Set(wordsLow(s).filter(w=>!STOP.has(w)&&w.length>2)); }
+
+function stem(w){ return w.replace(/(?:ing|tion|tions|ness|ment|ize|ise|ed|ly|er|est|s)$/,''); }
+function stemSet(s){ return new Set(wordsLow(s).filter(w=>!STOP.has(w)&&w.length>2).map(stem)); }
+
+function jaccard(setA,setB){
+  if(setA.size===0&&setB.size===0) return 1;
+  let inter=0; for(const w of setA) if(setB.has(w)) inter++;
+  const union=setA.size+setB.size-inter; return union===0?1:inter/union;
+}
+
+function semanticSim(a,b){
+  return Math.max(jaccard(keyWords(a),keyWords(b)), jaccard(stemSet(a),stemSet(b))*0.9);
+}
+
+// ── Voice detection
+const PASS_RE = /\b(is|are|was|were|be|been|being|get|gets|got|gotten)\s+\w+ed\b/i;
+function detectVoice(s){ return PASS_RE.test(s)?'passive':'active'; }
+function isVoiceShift(a,b){ const va=detectVoice(a),vb=detectVoice(b); return va!==vb&&va!=='unknown'&&vb!=='unknown'; }
+
+// ── Value delta
+function valueDelta(orig,edit){
+  const wO=wordsLow(orig),wE=wordsLow(edit);
+  const kwO=keyWords(orig),kwE=keyWords(edit);
+  const newC=[...kwE].filter(w=>!kwO.has(w)).length;
+  const lostC=[...kwO].filter(w=>!kwE.has(w)).length;
+  let score=(newC-lostC)*0.15;
+  const lr=wE.length/Math.max(wO.length,1);
+  if(lr<0.85) score+=0.15;
+  if(lr>1.35) score-=0.1;
+  if(isVoiceShift(orig,edit)&&detectVoice(edit)==='active') score+=0.1;
+  else if(isVoiceShift(orig,edit)) score-=0.05;
+  return Math.max(-1,Math.min(1,score));
+}
+
+// ── LCS line diff
+function lineDiff(a,b){
+  const m=a.length,n=b.length;
+  if(m*n>3000000) return greedyDiff(a,b);
+  const dp=[];
+  for(let i=0;i<=m;i++) dp[i]=new Uint16Array(n+1);
+  for(let i=m-1;i>=0;i--)
+    for(let j=n-1;j>=0;j--)
+      dp[i][j]=a[i].norm===b[j].norm?1+dp[i+1][j+1]:Math.max(dp[i+1][j],dp[i][j+1]);
+  const ops=[];let i=0,j=0;
+  while(i<m||j<n){
+    if(i<m&&j<n&&a[i].norm===b[j].norm){ops.push({t:'=',a:a[i],b:b[j]});i++;j++;}
+    else if(j<n&&(i>=m||dp[i][j+1]>=dp[i+1][j])){ops.push({t:'+',b:b[j]});j++;}
+    else{ops.push({t:'-',a:a[i]});i++;}
+  }
+  return ops;
+}
+
+function greedyDiff(a,b){
+  const bMap=new Map();
+  for(let j=0;j<b.length;j++){if(!bMap.has(b[j].norm))bMap.set(b[j].norm,[]);bMap.get(b[j].norm).push(j);}
+  const ops=[];let i=0,j=0;
+  while(i<a.length||j<b.length){
+    if(i<a.length&&j<b.length&&a[i].norm===b[j].norm){ops.push({t:'=',a:a[i],b:b[j]});i++;j++;}
+    else if(i>=a.length){ops.push({t:'+',b:b[j]});j++;}
+    else if(j>=b.length){ops.push({t:'-',a:a[i]});i++;}
+    else{
+      const cands=bMap.get(a[i].norm)||[];const next=cands.find(jj=>jj>=j);
+      if(next!==undefined&&next-j<=4){while(j<next){ops.push({t:'+',b:b[j]});j++;}}
+      else{ops.push({t:'-',a:a[i]});i++;ops.push({t:'+',b:b[j]});j++;}
+    }
+  }
+  return ops;
+}
+
+// ── Word diff
+function wordDiff(strA,strB){
+  const wa=words(strA),wb=words(strB);
+  const waL=wa.map(w=>w.toLowerCase()),wbL=wb.map(w=>w.toLowerCase());
+  const m=wa.length,n=wb.length;
+  if(m===0&&n===0) return [];
+  if(m*n>40000) return [{t:'-',v:strA},{t:'+',v:strB}];
+  const dp=[];
+  for(let i=0;i<=m;i++) dp[i]=new Uint16Array(n+1);
+  for(let i=m-1;i>=0;i--)
+    for(let j=n-1;j>=0;j--)
+      dp[i][j]=waL[i]===wbL[j]?1+dp[i+1][j+1]:Math.max(dp[i+1][j],dp[i][j+1]);
+  const ops=[];let i=0,j=0;
+  while(i<m||j<n){
+    if(i<m&&j<n&&waL[i]===wbL[j]){ops.push({t:'=',v:wa[i]});i++;j++;}
+    else if(j<n&&(i>=m||dp[i][j+1]>=dp[i+1][j])){ops.push({t:'+',v:wb[j]});j++;}
+    else{ops.push({t:'-',v:wa[i]});i++;}
+  }
+  return ops;
+}
+
+function renderWordDiff(strA,strB){
+  return wordDiff(strA,strB).map(op=>{
+    const e=esc(op.v);
+    if(op.t==='=') return `<span class="wd-same">${e} </span>`;
+    if(op.t==='+') return `<span class="wd-ins">${e} </span>`;
+    return `<span class="wd-del">${e} </span>`;
+  }).join('').trim();
+}
+
+// ── Merge ops with semantic tagging
+function mergeOps(rawOps){
+  const SEM_THRESH=0.75, MOD_THRESH=0.28;
+  const out=[];let i=0;
+  while(i<rawOps.length){
+    const op=rawOps[i];
+    if(op.t!=='-'&&op.t!=='+'){out.push(op);i++;continue;}
+    const removes=[],adds=[];let j=i;
+    while(j<rawOps.length&&(rawOps[j].t==='-'||rawOps[j].t==='+')){
+      if(rawOps[j].t==='-') removes.push(rawOps[j]);
+      else adds.push(rawOps[j]);
+      j++;
+    }
+    const usedAdds=new Set();
+    for(const rem of removes){
+      let bestSim=MOD_THRESH,bestIdx=-1;
+      for(let k=0;k<adds.length;k++){
+        if(usedAdds.has(k)) continue;
+        const sim=semanticSim(rem.a.norm,adds[k].b.norm);
+        if(sim>bestSim){bestSim=sim;bestIdx=k;}
+      }
+      if(bestIdx!==-1){
+        const vShift=isVoiceShift(rem.a.orig,adds[bestIdx].b.orig);
+        const isSemEquiv=bestSim>=SEM_THRESH;
+        out.push({t:'~',a:rem.a,b:adds[bestIdx].b,sim:bestSim,isSemEquiv,isVoice:vShift,vDelta:valueDelta(rem.a.orig,adds[bestIdx].b.orig)});
+        usedAdds.add(bestIdx);
+      } else {out.push(rem);}
+    }
+    for(let k=0;k<adds.length;k++) if(!usedAdds.has(k)) out.push(adds[k]);
+    i=j;
+  }
+  return out;
+}
+
+// ── Stats
+function computeStats(ops,totalWO,totalWF){
+  let wRemInMod=0,wAddInMod=0,wPureAdd=0,wPureRem=0;
+  let wCosmeticRem=0,wCosmeticAdd=0;
+  let lMod=0,lAdd=0,lRem=0,semEquiv=0,voiceShifts=0;
+  let totalVD=0,vCount=0;
+  for(const op of ops){
+    if(op.t==='~'){
+      lMod++;if(op.isSemEquiv)semEquiv++;if(op.isVoice)voiceShifts++;
+      if(typeof op.vDelta==='number'){totalVD+=op.vDelta;vCount++;}
+      const wops=wordDiff(op.a.norm,op.b.norm);
+      const remCt=wops.filter(w=>w.t==='-').length;
+      const addCt=wops.filter(w=>w.t==='+').length;
+      if(op.isSemEquiv){
+        // Same idea, different phrasing — cosmetic only, keep separate from real edits
+        wCosmeticRem+=remCt; wCosmeticAdd+=addCt;
+      } else {
+        wRemInMod+=remCt; wAddInMod+=addCt;
+      }
+    }else if(op.t==='+'){lAdd++;wPureAdd+=words(op.b.norm).length;}
+    else if(op.t==='-'){lRem++;wPureRem+=words(op.a.norm).length;}
+  }
+  // Real content changes count fully; cosmetic rewrites (same idea, diff words) count 12%
+  const realTouched=Math.max(wRemInMod+wPureRem,wAddInMod+wPureAdd);
+  const cosmeticPenalty=Math.max(wCosmeticRem,wCosmeticAdd)*0.12;
+  const base=Math.max(totalWO,totalWF,1);
+  const intensity=Math.min(100,Math.round((realTouched+cosmeticPenalty)/base*100));
+  const avgValue=vCount>0?totalVD/vCount:0;
+  return{intensity,wRemInMod,wAddInMod,wPureAdd,wPureRem,wCosmeticRem,wCosmeticAdd,lMod,lAdd,lRem,semEquiv,voiceShifts,avgValue};
+}
+
+// ── Sections
+function parseSections(text){
+  const lines=text.split('\n');
+  if(!lines.some(l=>/^#{1,4}\s/.test(l))){
+    const secs=[];
+    for(let i=0;i<lines.length;i+=20){
+      const chunk=lines.slice(i,i+20);
+      if(chunk.join('').trim()) secs.push({title:`Part ${Math.floor(i/20)+1}`,lines:chunk});
+    }
+    return secs;
+  }
+  const secs=[];let cur=null;
+  for(const l of lines){
+    if(/^#{1,4}\s/.test(l)){if(cur&&cur.lines.join('').trim())secs.push(cur);cur={title:l.replace(/^#{1,4}\s*/,'').trim(),lines:[]};}
+    else{if(!cur)cur={title:'Preamble',lines:[]};cur.lines.push(l);}
+  }
+  if(cur&&cur.lines.join('').trim()) secs.push(cur);
+  return secs;
+}
+
+// ── Intensity helpers
+function intensityLabel(pct){
+  if(pct<=5)  return{cls:'Light touch',col:'col-g'};
+  if(pct<=20) return{cls:'Minor edits',col:'col-g'};
+  if(pct<=38) return{cls:'Moderate revision',col:'col-a'};
+  if(pct<=60) return{cls:'Substantial rewrite',col:'col-a'};
+  return{cls:'Heavy revision',col:'col-r'};
+}
+
+// ── Build change item HTML
+function buildChangeItem(op,idx){
+  const bodyId='cb'+idx,arrowId='ca'+idx;
+  let kind='',dotCls='',badgeCls='',preview='',analysisHtml='',beforeTxt='',afterTxt='';
+  if(op.t==='~'){
+    beforeTxt=op.a.orig;afterTxt=op.b.orig;
+    const wops=wordDiff(op.a.orig,op.b.orig);
+    const removed=wops.filter(w=>w.t==='-').map(w=>w.v);
+    const added=wops.filter(w=>w.t==='+').map(w=>w.v);
+    if(op.isSemEquiv){
+      kind='semantic equiv';dotCls='ci-dot-sem';badgeCls='ci-badge-sem';
+      preview=op.a.orig.slice(0,55)+'…';
+      const vO=detectVoice(op.a.orig),vE=detectVoice(op.b.orig);
+      analysisHtml=`<p>Same core idea, different phrasing. Similarity: <strong>${Math.round(op.sim*100)}%</strong>. Voice: ${vO} → ${vE}. `+(removed.length?`Replaced <span class="wd-del">${esc(removed.slice(0,5).join(' '))}</span> with <span class="wd-ins">${esc(added.slice(0,5).join(' '))}</span>. `:``)+'This is a cosmetic restructure — not a content change.</p>';
+    }else if(op.isVoice){
+      kind='voice shift';dotCls='ci-dot-voice';badgeCls='ci-badge-voice';
+      preview=op.a.orig.slice(0,55)+'…';
+      const vO=detectVoice(op.a.orig),vE=detectVoice(op.b.orig);
+      analysisHtml=`<p>Voice shift: <strong>${vO} → ${vE}</strong>. `+(vE==='active'?'Active voice is more direct — structural improvement.':'Passive voice added; may be intentional for tone or formality.')+`</p>`;
+    }else{
+      const lbl=op.vDelta>0.15?'ci-badge-low':op.vDelta<-0.1?'ci-badge-high':'ci-badge-med';
+      kind='modified';dotCls='ci-dot-mod';badgeCls=lbl;
+      preview=op.a.orig.slice(0,55)+'…';
+      let valNote=op.vDelta>0.2?' Meaningful improvement — new concepts added or language sharpened.':op.vDelta>0.05?' Slight gain in precision or clarity.':op.vDelta<-0.1?' May have reduced specificity — verify intent.':' Stylistic change, neutral editorial impact.';
+      analysisHtml=`<p>Words replaced: <span class="wd-del">${esc(removed.slice(0,8).join(' ')||'—')}</span> → <span class="wd-ins">${esc(added.slice(0,8).join(' ')||'—')}</span>. Semantic similarity: <strong>${Math.round(op.sim*100)}%</strong>. Value delta: <strong>${op.vDelta>=0?'+':''}${op.vDelta.toFixed(2)}</strong>.${valNote}</p>`;
+    }
+  }else if(op.t==='+'){
+    kind='added';dotCls='ci-dot-add';badgeCls='ci-badge-low';
+    afterTxt=op.b.orig;preview=op.b.orig.slice(0,70);
+    const w=words(op.b.orig).length;
+    analysisHtml=`<p>New line inserted at position ${op.b.n}: <em>${w} word${w!==1?'s':''}</em>. Did not exist in Draft A.</p>`;
+  }else if(op.t==='-'){
+    kind='removed';dotCls='ci-dot-rem';badgeCls='ci-badge-high';
+    beforeTxt=op.a.orig;preview=op.a.orig.slice(0,70);
+    const w=words(op.a.orig).length;
+    analysisHtml=`<p>Line deleted from position ${op.a.n}: <em>${w} word${w!==1?'s':''}</em>. Absent from final version.</p>`;
+  }
+  const compHtml=(beforeTxt||afterTxt)?`<div class="ci-comparison">
+    ${beforeTxt?`<div class="ci-side ci-side-before"><div class="ci-side-label">First draft</div><div class="ci-side-text">${op.t==='~'?renderWordDiff(beforeTxt,afterTxt):esc(beforeTxt)}</div></div>`:''}
+    ${afterTxt?`<div class="ci-side ci-side-after"><div class="ci-side-label">Edited version</div><div class="ci-side-text">${op.t==='~'?renderWordDiff(beforeTxt,afterTxt):esc(afterTxt)}</div></div>`:''}
+  </div>`:'';
+  return `<div class="change-item"><div class="ci-hdr" onclick="toggleBlock('${bodyId}','${arrowId}')"><span class="ci-dot ${dotCls}"></span><span class="ci-kind">${kind}</span><span class="ci-preview">${esc(preview)}</span><span class="ci-badge ${badgeCls}">${kind}</span><span class="ci-arrow" id="${arrowId}">▸</span></div><div class="ci-body" id="${bodyId}">${compHtml}<div class="ci-analysis-label">Analysis</div><div class="ci-analysis">${analysisHtml}</div></div></div>`;
+}
+
+// ── Markdown renderer
+function renderMd(txt){
+  const lines=txt.split('\n');let html='',inList=false;
+  for(let l of lines){
+    l=l.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/`(.+?)`/g,'<code>$1</code>');
+    if(/^#+\s/.test(l)){if(inList){html+='</ul>';inList=false;}html+=`<h4>${l.replace(/^#+\s*/,'')}</h4>`;continue;}
+    if(/^\d+\.\s+\*\*/.test(l)){if(inList){html+='</ul>';inList=false;}html+=`<h4>${l.replace(/^\d+\.\s+/,'')}</h4>`;continue;}
+    if(/^>\s/.test(l)){if(inList){html+='</ul>';inList=false;}html+=`<blockquote>${l.replace(/^>\s/,'')}</blockquote>`;continue;}
+    if(/^[\-\*•]\s/.test(l)){if(!inList){html+='<ul>';inList=true;}html+=`<li>${l.replace(/^[\-\*•]\s/,'')}</li>`;continue;}
+    if(inList){html+='</ul>';inList=false;}
+    if(!l.trim()) continue;
+    html+=`<p>${l}</p>`;
+  }
+  if(inList) html+='</ul>';
+  return html;
+}
+
+// ── Main analysis
+async function runAnalysis(){
+  const apiKey=el('groqKey').value.trim();
+  const model=el('modelSel').value;
+  if(!apiKey){setStatus('Enter your Groq API key first.','err');return;}
+  setStatus('');el('results').style.display='none';
+  setBusy(true,'Computing diff…');await tick();
+
+  const aAll=tokenizeLines(texts.ai),bAll=tokenizeLines(texts.final);
+  const aC=contentLines(aAll),bC=contentLines(bAll);
+  const totalWO=aC.reduce((s,l)=>s+words(l.norm).length,0);
+  const totalWF=bC.reduce((s,l)=>s+words(l.norm).length,0);
+
+  let rawOps;
+  try{rawOps=lineDiff(aC,bC);}
+  catch(e){setStatus('Diff error: '+e.message,'err');setBusy(false);return;}
+
+  const ops=mergeOps(rawOps);
+  const st=computeStats(ops,totalWO,totalWF);
+  const{cls,col}=intensityLabel(st.intensity);
+  const netW=totalWF-totalWO;
+
+  // Verdict
+  el('v-score').textContent=st.intensity+'%';
+  el('v-score').className='verdict-score '+col;
+  el('v-cls').textContent=cls;
+  const realMod=st.lMod-st.semEquiv;
+  el('v-summary').textContent=(realMod>0?`${realMod} line${realMod!==1?'s':''} genuinely edited`:'No content changes')+`, ${st.lAdd} added, ${st.lRem} removed`+(st.semEquiv>0?` — ${st.semEquiv} cosmetic rephrasing${st.semEquiv!==1?'s':''} (same idea, different words, not counted in intensity).`:'.')+(st.voiceShifts>0?` ${st.voiceShifts} voice shift${st.voiceShifts!==1?'s':''} detected.`:'')+` Net word count: ${netW>0?'+':''}${netW}.`;
+  el('v-pills').innerHTML=[
+    {l:`+${st.lAdd} added`,c:'vpill-g'},{l:`−${st.lRem} removed`,c:'vpill-r'},
+    {l:`~${st.lMod} modified`,c:'vpill-a'},{l:`◈${st.semEquiv} equiv`,c:'vpill-p'},
+    {l:`⇄${st.voiceShifts} voice`,c:'vpill-t'},{l:`net ${netW>0?'+':''}${netW}w`,c:'vpill-b'}
+  ].map(p=>`<span class="vpill ${p.c}">${p.l}</span>`).join('');
+
+  // Stats
+  el('s-wch').textContent=Math.max(st.wRemInMod,st.wAddInMod).toLocaleString();
+  const cosmeticWordCt=Math.max(st.wCosmeticRem,st.wCosmeticAdd);
+  el('s-wch-s').textContent=cosmeticWordCt>0?`+ ${cosmeticWordCt} cosmetic rephrase`:`in ${st.lMod-st.semEquiv} line${(st.lMod-st.semEquiv)!==1?'s':''}`;
+  el('s-wadd').textContent=st.wPureAdd.toLocaleString();
+  el('s-wadd-s').textContent=`across ${st.lAdd} new line${st.lAdd!==1?'s':''}`;
+  el('s-wrem').textContent=st.wPureRem.toLocaleString();
+  el('s-wrem-s').textContent=`across ${st.lRem} deleted line${st.lRem!==1?'s':''}`;
+  el('s-sem').textContent=st.semEquiv;
+  el('s-voice').textContent=st.voiceShifts;
+  const valPct=Math.round(st.avgValue*100);
+  el('s-val').textContent=(valPct>0?'+':'')+valPct+'%';
+  el('s-val-s').textContent=valPct>10?'improved clarity':valPct<-5?'review needed':'neutral';
+  el('s-val').className='stat-val '+(valPct>10?'col-g':valPct<-5?'col-r':'col-b');
+
+  // Pills
+  el('pill-add').textContent=`+${st.lAdd} added`;
+  el('pill-rem').textContent=`−${st.lRem} removed`;
+  el('pill-mod').textContent=`~${st.lMod} modified`;
+  el('pill-sem').textContent=`◈${st.semEquiv} equiv`;
+  el('pill-voice').textContent=`⇄${st.voiceShifts} voice`;
+
+  // Line diff
+  const CONTEXT=2,changedSet=new Set();
+  ops.forEach((o,idx)=>{if(o.t!=='=')for(let k=Math.max(0,idx-CONTEXT);k<=Math.min(ops.length-1,idx+CONTEXT);k++)changedSet.add(k);});
+  let ldHtml='',lastShown=-1;
+  for(let i=0;i<ops.length;i++){
+    const op=ops[i];if(!changedSet.has(i))continue;
+    if(lastShown!==-1&&i>lastShown+1){const sk=i-lastShown-1;ldHtml+=`<div class="dl lsep"><div class="dl-ln"></div><div class="dl-sym"></div><div class="dl-txt">${sk} unchanged</div></div>`;}
+    if(op.t==='~'){
+      const rc=op.isSemEquiv?'ls':op.isVoice?'lv':'lm';
+      const sym=op.isSemEquiv?'◈':op.isVoice?'⇄':'~';
+      ldHtml+=`<div class="dl ${rc}"><div class="dl-ln"><span style="color:var(--red);opacity:.7">${op.a.n}</span><span style="color:var(--green);opacity:.7">${op.b.n}</span></div><div class="dl-sym">${sym}</div><div class="dl-txt">${renderWordDiff(op.a.orig,op.b.orig)||'&nbsp;'}</div></div>`;
+    }else if(op.t==='+'){ldHtml+=`<div class="dl la"><div class="dl-ln">${op.b.n}</div><div class="dl-sym">+</div><div class="dl-txt">${esc(op.b.orig)||'&nbsp;'}</div></div>`;}
+    else if(op.t==='-'){ldHtml+=`<div class="dl lr"><div class="dl-ln">${op.a.n}</div><div class="dl-sym">−</div><div class="dl-txt">${esc(op.a.orig)||'&nbsp;'}</div></div>`;}
+    else{ldHtml+=`<div class="dl lc"><div class="dl-ln">${op.a.n}</div><div class="dl-sym"></div><div class="dl-txt">${esc(op.a.orig)||'&nbsp;'}</div></div>`;}
+    lastShown=i;
+  }
+  if(!ldHtml) ldHtml=`<div class="dl lc"><div class="dl-ln">—</div><div class="dl-sym"></div><div class="dl-txt" style="color:var(--ink4);font-style:italic">No differences — documents are identical.</div></div>`;
+  el('panel-line').innerHTML=ldHtml;
+
+  // Word diff panel
+  const modOps=ops.filter(o=>o.t==='~');
+  let wdHtml='';
+  if(!modOps.length) wdHtml=`<div style="padding:14px;color:var(--ink4);font-size:11.5px;font-style:italic">No modified lines — only pure additions/removals.</div>`;
+  else for(const op of modOps.slice(0,80)){
+    wdHtml+=`<div style="padding:8px 13px;border-bottom:1px solid var(--border)"><div style="font-family:var(--mono);font-size:9px;color:var(--ink4);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Line ${op.a.n}→${op.b.n} · sim ${Math.round(op.sim*100)}%${op.isSemEquiv?' · equiv':''}${op.isVoice?' · voice':''}</div><div>${renderWordDiff(op.a.orig,op.b.orig)}</div></div>`;
+  }
+  if(modOps.length>80) wdHtml+=`<div style="padding:9px 13px;color:var(--ink4);font-size:11px;font-style:italic">… and ${modOps.length-80} more</div>`;
+  el('panel-word').innerHTML=wdHtml;
+
+  // Change list
+  setBusy(true,'Building change list…');await tick();
+  const sigOps=ops.filter(o=>o.t!=='=').slice(0,60);
+  el('changeList').innerHTML=sigOps.map((op,i)=>buildChangeItem(op,i)).join('');
+
+  // Sections
+  setBusy(true,'Analysing sections…');await tick();
+  const aiSecs=parseSections(texts.ai),finalSecs=parseSections(texts.final);
+  el('secsGrid').innerHTML='';
+  const secReport=[];
+  for(const sec of aiSecs){
+    const match=finalSecs.find(s=>s.title.toLowerCase()===sec.title.toLowerCase());
+    const sAC=contentLines(tokenizeLines(sec.lines.join('\n')));
+    const sBC=match?contentLines(tokenizeLines(match.lines.join('\n'))):[];
+    const sWO=sAC.reduce((s,l)=>s+words(l.norm).length,0);
+    const sWF=sBC.reduce((s,l)=>s+words(l.norm).length,0);
+    const sOps=mergeOps(lineDiff(sAC,sBC));
+    const ss=computeStats(sOps,sWO,sWF);
+    secReport.push({title:sec.title,...ss});
+    const{cls:sCls}=intensityLabel(ss.intensity);
+    const sgC=ss.intensity>=50?'sg-badge-h':ss.intensity>=20?'sg-badge-m':ss.intensity>0?'sg-badge-l':'sg-badge-n';
+    const lbl=ss.intensity===0?'unchanged':ss.intensity+'% edited';
+    const base=Math.max(sWO,sWF,1);
+    const bM=Math.min(100,Math.round((ss.wRemInMod/base)*100));
+    const bA=Math.min(100,Math.round((ss.wPureAdd/base)*100));
+    const bR=Math.min(100,Math.round((ss.wPureRem/base)*100));
+    const pv=sOps.filter(o=>o.t==='~').slice(0,2).map(o=>`<div style="color:var(--amber)">~ ${esc(o.a.orig.trim().slice(0,70))} → ${esc(o.b.orig.trim().slice(0,70))}</div>`).join('');
+    const pa=sOps.filter(o=>o.t==='+').slice(0,1).map(o=>`<div style="color:var(--green)">+ ${esc(o.b.orig.trim().slice(0,70))}</div>`).join('');
+    const pr=sOps.filter(o=>o.t==='-').slice(0,1).map(o=>`<div style="color:var(--red)">− ${esc(o.a.orig.trim().slice(0,70))}</div>`).join('');
+    const bId='sg'+Math.random().toString(36).slice(2),aId='sga'+Math.random().toString(36).slice(2);
+    const card=document.createElement('div');card.className='sg';
+    card.innerHTML=`<div class="sg-hdr" onclick="toggleBlock('${bId}','${aId}')"><span class="sg-title">${esc(sec.title)}</span><span class="sg-meta"><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink4)">${ss.lMod} mod·+${ss.lAdd}·−${ss.lRem}${ss.semEquiv>0?' · '+ss.semEquiv+'eq':''}</span><span class="sg-badge ${sgC}">${lbl}</span><span class="ci-arrow" id="${aId}">▸</span></span></div><div class="sg-body" id="${bId}"><div><div class="sg-bar-row"><span class="sg-bar-lbl">modified</span><div class="sg-bar-track"><div class="sg-bar-fill" style="width:${bM}%;background:var(--amber)"></div></div><span class="sg-bar-count">${Math.max(ss.wRemInMod,ss.wAddInMod)}w</span></div><div class="sg-bar-row"><span class="sg-bar-lbl">added</span><div class="sg-bar-track"><div class="sg-bar-fill" style="width:${bA}%;background:var(--green)"></div></div><span class="sg-bar-count">${ss.wPureAdd}w</span></div><div class="sg-bar-row"><span class="sg-bar-lbl">removed</span><div class="sg-bar-track"><div class="sg-bar-fill" style="width:${bR}%;background:var(--red)"></div></div><span class="sg-bar-count">${ss.wPureRem}w</span></div></div><div class="sg-preview">${pv+pa+pr||'<span style="color:var(--ink4);font-style:italic">No changes.</span>'}</div></div>`;
+    el('secsGrid').appendChild(card);
+  }
+
+  el('results').style.display='block';
+
+  // Groq
+  setBusy(true,'Requesting AI editorial analysis…');
+  el('aiBox').innerHTML='<p class="ai-loading">Analysing with AI</p>';
+
+  const diffSample=ops.filter(o=>o.t!=='=').slice(0,80).map(op=>{
+    if(op.t==='~'){
+      const wops=wordDiff(op.a.norm,op.b.norm);
+      const rem=wops.filter(w=>w.t==='-').map(w=>w.v).join(' ');
+      const add=wops.filter(w=>w.t==='+').map(w=>w.v).join(' ');
+      const flags=[];
+      if(op.isSemEquiv)flags.push('SEMANTIC_EQUIV');
+      if(op.isVoice)flags.push(`VOICE:${detectVoice(op.a.orig)}→${detectVoice(op.b.orig)}`);
+      if(op.vDelta>0.15)flags.push('VALUE:+');
+      if(op.vDelta<-0.1)flags.push('VALUE:-');
+      return `MOD${flags.length?'['+flags.join(',')+']':''} l${op.a.n}:\n  BEFORE: "${op.a.norm}"\n  AFTER:  "${op.b.norm}"${rem?`\n  CHANGED: "${rem}" → "${add}"`:''}\n  sim=${Math.round(op.sim*100)}% vdelta=${op.vDelta.toFixed(2)}`;
+    }
+    if(op.t==='+')return `ADD l${op.b.n}: "${op.b.norm}"`;
+    if(op.t==='-')return `REM l${op.a.n}: "${op.a.norm}"`;
+    return'';
+  }).filter(Boolean).join('\n');
+
+  const secSumm=secReport.map(s=>`"${s.title}": intensity=${s.intensity}%, semEquiv=${s.semEquiv}, voiceShifts=${s.voiceShifts}, wChanged=${Math.max(s.wRemInMod||0,s.wAddInMod||0)}, wAdded=${s.wPureAdd}, wRemoved=${s.wPureRem}`).join('\n');
+
+  const prompt=`You are a professional copy editor reviewing a diff between two drafts. Be precise, evidence-based, and measured — judge changes the way an experienced editor would, not as an AI grading exercise. Most edits are minor even when word counts look large.
+
+METRICS (algorithmic — semantic rewrites already excluded from intensity):
+- Edit intensity: ${st.intensity}% — "${cls}" (semantic equiv rewrites are excluded from this score)
+- Genuinely modified lines: ${st.lMod-st.semEquiv} | Added lines: ${st.lAdd} | Removed lines: ${st.lRem}
+- Semantic equivalents: ${st.semEquiv} (same idea, reworded — cosmetic, excluded from intensity)
+- Voice shifts: ${st.voiceShifts}
+- Real word-level changes: ~${Math.max(st.wRemInMod,st.wAddInMod)} words (actual new ideas/fixes)
+- Cosmetic word-level rewrites: ~${cosmeticWordCt} words (same meaning, different phrasing — treat as near-zero work)
+- Words added (new lines): ${st.wPureAdd} | Words removed (deleted lines): ${st.wPureRem}
+- Word count: ${totalWO} → ${totalWF} (net ${netW>0?'+':''}${netW})
+- Avg value delta: ${(st.avgValue*100).toFixed(1)}%
+
+SECTION BREAKDOWN:
+${secSumm}
+
+ANNOTATED DIFF (with semantic flags):
+${diffSample}
+
+RULES:
+- Say "Draft A" and "Draft B" — never "AI" or "human"
+- Every claim must cite specific before/after text from the diff
+- SEMANTIC_EQUIV lines are cosmetic rewrites — same content, just reworded. Do NOT describe them as "substantial changes", "heavy editing", or "significant work". They represent near-zero editorial effort
+- A voice shift (active↔passive) on the same idea is a minor structural tweak, not a content change
+- Only use words like "heavy", "substantial", or "major" if genuinely new information was added or meaning significantly changed
+- If most changes are SEMANTIC_EQUIV or voice-only, say so plainly — the edit was light
+- Note voice shift direction and whether it improved readability
+- Call out both improvements AND regressions honestly
+
+STRUCTURE (exactly 5 sections):
+
+**1. Overall verdict**
+State intensity class. What does the edit pattern reveal about Draft A's quality? Be direct.
+
+**2. Real changes vs cosmetic changes**
+How many changes are substantive vs semantic equivalents (same idea, reworded)? Cite 2–3 specific MOD examples with before/after text.
+
+**3. Most impactful edits**
+Name the 2–3 changes that most improved or significantly altered the content. Quote the before/after. Explain the editorial logic.
+
+**4. Voice and structural patterns**
+Discuss voice shifts detected. Were they improvements? Any structural additions/removals that changed the content's arc?
+
+**5. Value assessment**
+Based on the avg value delta (${(st.avgValue*100).toFixed(1)}%) and evidence, did Draft B improve Draft A, regress it, or mostly restyle it? What did Draft A get right? What did Draft B improve?`;
+
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+      body:JSON.stringify({model,max_tokens:1800,temperature:0.05,
+        messages:[{role:'system',content:'You are a precise, unbiased editorial analyst. Always cite specific diff evidence. Never invent examples.'},{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error?.message||`HTTP ${res.status}`);
+    const txt=data.choices?.[0]?.message?.content||'No response.';
+    el('aiBox').innerHTML=renderMd(txt);
+    setStatus('');
+  }catch(err){
+    el('aiBox').innerHTML=`<p style="color:var(--red);font-weight:500">Groq error: ${esc(err.message)}</p><p style="color:var(--ink4);font-size:12px">Check your API key. The algorithmic analysis above is complete without it.</p>`;
+    setStatus('Groq API failed — algorithmic diff results are still fully accurate.','err');
+  }
+  setBusy(false);
+}
+</script>
+</body>
+</html>
