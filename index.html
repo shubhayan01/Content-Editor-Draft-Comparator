@@ -208,6 +208,39 @@ body{min-height:100vh}
 .ai-loading{color:var(--ink4);font-style:italic;display:flex;align-items:center;gap:9px;font-size:12.5px;font-family:var(--mono)}
 .ai-loading::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--ink4);animation:pulse 1.2s ease-in-out infinite}
 
+/* ── Content Value Intelligence ── */
+.cvi-wrap{border-radius:var(--r2);overflow:hidden;border:1px solid var(--border)}
+.cvi-grid{display:grid;grid-template-columns:1fr 152px 1fr;background:var(--paper2)}
+.cvi-col{padding:1.1rem 1.2rem}
+.cvi-col-a{border-right:1px solid var(--border)}
+.cvi-col-b{border-left:1px solid var(--border)}
+.cvi-mid{padding:.9rem .7rem;background:var(--paper3);display:flex;flex-direction:column;align-items:center;gap:4px}
+.cvi-col-hdr{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink4);margin-bottom:.85rem}
+.cvi-score{display:flex;align-items:baseline;gap:7px;margin-bottom:.8rem}
+.cvi-score-num{font-family:var(--serif);font-size:34px;font-weight:600;letter-spacing:-1.5px;line-height:1}
+.cvi-score-lbl{font-family:var(--mono);font-size:9px;color:var(--ink4);line-height:1.4}
+.cvi-sig{margin-bottom:5px}
+.cvi-sig-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.cvi-sig-name{font-family:var(--mono);font-size:9.5px;color:var(--ink3)}
+.cvi-sig-val{font-family:var(--mono);font-size:9.5px;color:var(--ink2)}
+.cvi-bar-track{height:3px;background:var(--paper4);border-radius:2px;overflow:hidden}
+.cvi-bar-fill{height:100%;border-radius:2px}
+.cvi-concepts-hdr{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink4);margin:10px 0 5px}
+.cvi-chips{display:flex;flex-wrap:wrap;gap:4px}
+.concept-chip{font-family:var(--mono);font-size:9.5px;padding:2px 7px;border-radius:10px;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+.chip-kept{background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent-bd)}
+.chip-gain{background:var(--green-lt);color:var(--green);border:1px solid var(--green-bd)}
+.chip-lost{background:var(--red-lt);color:var(--red);border:1px solid var(--red-bd)}
+.cvi-mid-lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink4);margin-bottom:4px;text-align:center}
+.cvi-flow-chip{font-family:var(--mono);font-size:8.5px;padding:2px 6px;border-radius:8px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.cvi-sep{width:100%;height:1px;background:var(--border);margin:3px 0}
+.cvi-footer{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:.85rem 1rem;background:var(--paper);border-top:1px solid var(--border)}
+.cvi-foot-cell{background:var(--paper2);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .8rem}
+.cvi-foot-lbl{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink4);margin-bottom:4px}
+.cvi-foot-val{font-family:var(--serif);font-size:20px;font-weight:500;letter-spacing:-1px;line-height:1.1}
+.cvi-foot-note{font-family:var(--mono);font-size:9px;color:var(--ink4);margin-top:3px;line-height:1.4}
+@media(max-width:640px){.cvi-grid{grid-template-columns:1fr}.cvi-col-a{border-right:none;border-bottom:1px solid var(--border)}.cvi-mid{flex-direction:row;flex-wrap:wrap;border-bottom:1px solid var(--border)}.cvi-col-b{border-left:none}.cvi-footer{grid-template-columns:repeat(2,1fr)}}
+
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
@@ -342,6 +375,9 @@ body{min-height:100vh}
 
   <div class="sec-hdr"><span class="sec-hdr-title">Changes by section</span></div>
   <div class="sec-grid" id="secsGrid"></div>
+
+  <div class="sec-hdr"><span class="sec-hdr-title">Content intelligence</span></div>
+  <div id="cviPanel"></div>
 
   <div class="sec-hdr"><span class="sec-hdr-title">AI editorial analysis</span></div>
   <div class="ai-box" id="aiBox">
@@ -544,7 +580,7 @@ function renderWordDiff(strA,strB){
 
 // ── Merge ops with semantic tagging
 function mergeOps(rawOps){
-  const SEM_THRESH=0.75, MOD_THRESH=0.28;
+  const SEM_THRESH=0.75, MOD_THRESH=0.20;
   const out=[];let i=0;
   while(i<rawOps.length){
     const op=rawOps[i];
@@ -636,6 +672,133 @@ function intensityLabel(pct){
   return{cls:'Heavy revision',col:'col-r'};
 }
 
+// ── Classify what a modification actually did
+function classifyModChange(orig,edit,sim,vDelta){
+  const oL=orig.toLowerCase(),eL=edit.toLowerCase();
+  const hasNewNum=/\d/.test(edit)&&!/\d/.test(orig);
+  const hasNewEx=/\b(for example|such as|e\.g\.|specifically|for instance|like when)\b/.test(eL)&&!/\b(for example|such as|e\.g\.|specifically|for instance|like when)\b/.test(oL);
+  const hasNewEv=/\b(because|therefore|research shows|data shows|study|proves|evidence|according to)\b/.test(eL)&&!/\b(because|therefore|research shows|data shows|study|proves|evidence|according to)\b/.test(oL);
+  const ow=words(orig).length,ew=words(edit).length,ratio=ew/Math.max(ow,1);
+  if(hasNewNum) return{type:'Specificity added',note:'A concrete number or data point was introduced — makes the claim verifiable.'};
+  if(hasNewEx)  return{type:'Example added',note:'An illustration was introduced — aids reader comprehension and retention.'};
+  if(hasNewEv)  return{type:'Reasoning added',note:'Causal or evidential language added — the argument is now better supported.'};
+  if(ratio<0.75&&vDelta>=0) return{type:'Tightened',note:'Same meaning in fewer words — direct improvement to readability.'};
+  if(ratio<0.75&&vDelta<0)  return{type:'Cut short',note:'Shorter but may have lost nuance — verify full intent was preserved.'};
+  if(ratio>1.3&&vDelta>0.1) return{type:'Expanded + improved',note:'More words and more value — a genuine substantive addition.'};
+  if(sim>=0.75)             return{type:'Cosmetic rephrase',note:'Same core idea, different surface words. Zero content impact.'};
+  if(vDelta>0.15)           return{type:'Quality upgrade',note:'Language improved — more precise, concrete, or persuasive.'};
+  if(vDelta<-0.1)           return{type:'Potential regression',note:'Value score dropped — check if important specificity or context was removed.'};
+  return{type:'Stylistic edit',note:'Word-level change with neutral content impact.'};
+}
+
+// ── Concept extraction (unigrams + bigrams by frequency)
+function extractConcepts(text){
+  const ws=wordsLow(text).filter(w=>!STOP.has(w)&&w.length>3);
+  const freq=new Map();
+  for(const w of ws) freq.set(w,(freq.get(w)||0)+1);
+  for(let i=0;i<ws.length-1;i++){const bg=ws[i]+' '+ws[i+1];freq.set(bg,(freq.get(bg)||0)+1.8);}
+  return [...freq.entries()].filter(([k,v])=>k.includes(' ')?v>=1.8:v>=2).sort((a,b)=>b[1]-a[1]).slice(0,50).map(([k])=>k);
+}
+
+// ── Content specificity signals (0-98 score)
+function computeSpecificity(text){
+  const ws=words(text);const total=Math.max(ws.length,1);const t=text.toLowerCase();
+  const p100=n=>n/total*100;
+  const numericCount =(ws.filter(w=>/\d/.test(w))).length;
+  const exampleCount =(t.match(/\b(for example|for instance|such as|e\.g\.|including|specifically|namely|consider|like when)\b/g)||[]).length;
+  const evidenceCount=(t.match(/\b(because|therefore|thus|hence|shows|proves|demonstrates|research|study|data|according to|evidence|statistics|found that|reveals|survey|report)\b/g)||[]).length;
+  const actionCount  =(t.match(/\b(you can|you should|you need|make sure|ensure|avoid|always|never|start|stop|use|create|build|write|focus|implement|apply|follow|check|review)\b/g)||[]).length;
+  const vagueCount   =(t.match(/\b(stuff|things|various things|many things|some things|etc\b|and so on|or something|kind of|sort of|quite a bit)\b/g)||[]).length;
+  const raw=p100(numericCount)*4+p100(exampleCount)*6+p100(evidenceCount)*4+p100(actionCount)*3-p100(vagueCount)*5;
+  const specificity=Math.max(10,Math.min(98,Math.round(raw*3.5+30)));
+  return{numericCount,exampleCount,evidenceCount,actionCount,vagueCount,specificity,total};
+}
+
+// ── Build Content Value Intelligence panel
+function buildCVI(textA,textB){
+  const sigA=computeSpecificity(textA),sigB=computeSpecificity(textB);
+  const cA=extractConcepts(textA),cB=extractConcepts(textB);
+  const stemA=new Map(cA.map(c=>[c.split(' ').map(stem).join(' '),c]));
+  const stemB=new Map(cB.map(c=>[c.split(' ').map(stem).join(' '),c]));
+  const setA=new Set(cA),setB=new Set(cB);
+  const gained=cB.filter(c=>{const sc=c.split(' ').map(stem).join(' ');return!stemA.has(sc)&&!setA.has(c);}).slice(0,16);
+  const lost  =cA.filter(c=>{const sc=c.split(' ').map(stem).join(' ');return!stemB.has(sc)&&!setB.has(c);}).slice(0,16);
+  const kept  =cA.filter(c=>{const sc=c.split(' ').map(stem).join(' ');return stemB.has(sc)||setB.has(c);}).slice(0,10);
+
+  const sigs=[
+    {label:'Data / numbers', a:sigA.numericCount, b:sigB.numericCount, color:'var(--accent)', better:'high'},
+    {label:'Examples',       a:sigA.exampleCount, b:sigB.exampleCount, color:'var(--purple)', better:'high'},
+    {label:'Evidence',       a:sigA.evidenceCount,b:sigB.evidenceCount,color:'var(--teal)',   better:'high'},
+    {label:'Actionability',  a:sigA.actionCount,  b:sigB.actionCount,  color:'var(--green)',  better:'high'},
+    {label:'Vague language', a:sigA.vagueCount,   b:sigB.vagueCount,   color:'var(--red)',    better:'low'},
+  ];
+  const specCol=s=>s>=65?'var(--green)':s>=40?'var(--amber)':'var(--red)';
+  const dArr=(a,b,bt)=>bt==='high'?(b>a?'<span class="col-g">▲</span>':b<a?'<span class="col-r">▼</span>':'<span style="color:var(--ink4)">—</span>'):(b<a?'<span class="col-g">▲</span>':b>a?'<span class="col-r">▼</span>':'<span style="color:var(--ink4)">—</span>');
+  const barA=sig=>{const max=Math.max(sig.a,sig.b,1),pA=Math.round(sig.a/max*100);return`<div class="cvi-sig"><div class="cvi-sig-top"><span class="cvi-sig-name">${sig.label}</span><span class="cvi-sig-val">${sig.a}</span></div><div class="cvi-bar-track"><div class="cvi-bar-fill" style="width:${pA}%;background:${sig.color}"></div></div></div>`;};
+  const barB=sig=>{const max=Math.max(sig.a,sig.b,1),pB=Math.round(sig.b/max*100);return`<div class="cvi-sig"><div class="cvi-sig-top"><span class="cvi-sig-name">${sig.label}</span><span class="cvi-sig-val">${sig.b} ${dArr(sig.a,sig.b,sig.better)}</span></div><div class="cvi-bar-track"><div class="cvi-bar-fill" style="width:${pB}%;background:${sig.color}"></div></div></div>`;};
+
+  const specDelta=sigB.specificity-sigA.specificity;
+  const conceptNet=gained.length-lost.length;
+  const vScore=Math.sign(specDelta)*Math.min(1,Math.abs(specDelta)/10)+Math.sign(conceptNet)*Math.min(1,Math.abs(conceptNet)/4);
+  const verdict=vScore>0.4?{label:'Draft B delivers more value',col:'var(--green)'}:vScore<-0.4?{label:'Draft A had more substance',col:'var(--red)'}:{label:'Comparable reader value',col:'var(--amber)'};
+  const editType=(()=>{
+    if(specDelta>5&&conceptNet>0) return 'Concept expansion + depth upgrade';
+    if(specDelta>5)  return 'Specificity upgrade';
+    if(conceptNet>2) return 'Concept expansion';
+    if(conceptNet<-2)return 'Concept narrowing / focus';
+    if(Math.abs(specDelta)<=3&&Math.abs(conceptNet)<=2) return 'Style / voice cleanup';
+    if(specDelta<-5) return 'Depth reduction';
+    return 'Balanced refinement';
+  })();
+
+  const html=`<div class="cvi-wrap"><div class="cvi-grid">
+  <div class="cvi-col cvi-col-a">
+    <div class="cvi-col-hdr">Draft A — Original</div>
+    <div class="cvi-score"><div class="cvi-score-num" style="color:${specCol(sigA.specificity)}">${sigA.specificity}</div><div class="cvi-score-lbl">content<br>score</div></div>
+    ${sigs.map(barA).join('')}
+    <div class="cvi-concepts-hdr">Core concepts</div>
+    <div class="cvi-chips">${kept.slice(0,6).map(c=>`<span class="concept-chip chip-kept" title="${esc(c)}">${esc(c)}</span>`).join('')}${lost.slice(0,5).map(c=>`<span class="concept-chip chip-lost" title="dropped">${esc(c)}</span>`).join('')}</div>
+  </div>
+  <div class="cvi-mid">
+    <div class="cvi-mid-lbl">Idea flow</div>
+    ${gained.slice(0,7).map(c=>`<div class="cvi-flow-chip" style="background:var(--green-lt);color:var(--green);border:1px solid var(--green-bd)">+${esc(c)}</div>`).join('')}
+    ${gained.length&&lost.length?'<div class="cvi-sep"></div>':''}
+    ${lost.slice(0,7).map(c=>`<div class="cvi-flow-chip" style="background:var(--red-lt);color:var(--red);border:1px solid var(--red-bd)">−${esc(c)}</div>`).join('')}
+    ${!gained.length&&!lost.length?'<div style="font-family:var(--mono);font-size:9px;color:var(--ink4);text-align:center;padding:8px 0">same concepts</div>':''}
+  </div>
+  <div class="cvi-col cvi-col-b">
+    <div class="cvi-col-hdr">Draft B — Edited</div>
+    <div class="cvi-score"><div class="cvi-score-num" style="color:${specCol(sigB.specificity)}">${sigB.specificity}</div><div class="cvi-score-lbl">content<br>score</div></div>
+    ${sigs.map(barB).join('')}
+    <div class="cvi-concepts-hdr">Core concepts</div>
+    <div class="cvi-chips">${kept.slice(0,6).map(c=>`<span class="concept-chip chip-kept" title="${esc(c)}">${esc(c)}</span>`).join('')}${gained.slice(0,5).map(c=>`<span class="concept-chip chip-gain" title="new in B">${esc(c)}</span>`).join('')}</div>
+  </div>
+</div>
+<div class="cvi-footer">
+  <div class="cvi-foot-cell">
+    <div class="cvi-foot-lbl">Edit type</div>
+    <div class="cvi-foot-val" style="font-size:13px;letter-spacing:-.3px;font-family:var(--serif)">${editType}</div>
+  </div>
+  <div class="cvi-foot-cell">
+    <div class="cvi-foot-lbl">Concepts gained</div>
+    <div class="cvi-foot-val col-g">${gained.length}</div>
+    <div class="cvi-foot-note">${gained.slice(0,3).map(c=>esc(c)).join(' · ')||'none'}</div>
+  </div>
+  <div class="cvi-foot-cell">
+    <div class="cvi-foot-lbl">Concepts dropped</div>
+    <div class="cvi-foot-val col-r">${lost.length}</div>
+    <div class="cvi-foot-note">${lost.slice(0,3).map(c=>esc(c)).join(' · ')||'none'}</div>
+  </div>
+  <div class="cvi-foot-cell">
+    <div class="cvi-foot-lbl">Reader value</div>
+    <div class="cvi-foot-val" style="color:${verdict.col};font-size:13px;letter-spacing:-.2px">${verdict.label.split(' ').slice(0,2).join(' ')}</div>
+    <div class="cvi-foot-note">${verdict.label.split(' ').slice(2).join(' ')||''} · ${sigA.specificity}→${sigB.specificity}</div>
+  </div>
+</div></div>`;
+
+  return{html,gained,lost,kept,sigA,sigB,editType,verdict};
+}
+
 // ── Build change item HTML
 function buildChangeItem(op,idx){
   const bodyId='cb'+idx,arrowId='ca'+idx;
@@ -659,19 +822,23 @@ function buildChangeItem(op,idx){
       const lbl=op.vDelta>0.15?'ci-badge-low':op.vDelta<-0.1?'ci-badge-high':'ci-badge-med';
       kind='modified';dotCls='ci-dot-mod';badgeCls=lbl;
       preview=op.a.orig.slice(0,55)+'…';
-      let valNote=op.vDelta>0.2?' Meaningful improvement — new concepts added or language sharpened.':op.vDelta>0.05?' Slight gain in precision or clarity.':op.vDelta<-0.1?' May have reduced specificity — verify intent.':' Stylistic change, neutral editorial impact.';
-      analysisHtml=`<p>Words replaced: <span class="wd-del">${esc(removed.slice(0,8).join(' ')||'—')}</span> → <span class="wd-ins">${esc(added.slice(0,8).join(' ')||'—')}</span>. Semantic similarity: <strong>${Math.round(op.sim*100)}%</strong>. Value delta: <strong>${op.vDelta>=0?'+':''}${op.vDelta.toFixed(2)}</strong>.${valNote}</p>`;
+      const mod=classifyModChange(op.a.orig,op.b.orig,op.sim,op.vDelta);
+      analysisHtml=`<p><strong>${mod.type}.</strong> ${mod.note}</p><p>Replaced: <span class="wd-del">${esc(removed.slice(0,8).join(' ')||'—')}</span> → <span class="wd-ins">${esc(added.slice(0,8).join(' ')||'—')}</span>. Similarity: <strong>${Math.round(op.sim*100)}%</strong> · Value delta: <strong>${op.vDelta>=0?'+':''}${op.vDelta.toFixed(2)}</strong>.</p>`;
     }
   }else if(op.t==='+'){
     kind='added';dotCls='ci-dot-add';badgeCls='ci-badge-low';
     afterTxt=op.b.orig;preview=op.b.orig.slice(0,70);
     const w=words(op.b.orig).length;
-    analysisHtml=`<p>New line inserted at position ${op.b.n}: <em>${w} word${w!==1?'s':''}</em>. Did not exist in Draft A.</p>`;
+    const aS=computeSpecificity(op.b.orig);
+    const aNote=aS.numericCount>0?' Contains data/numbers — adds specificity.':aS.exampleCount>0?' Contains an example — aids comprehension.':aS.evidenceCount>0?' Contains evidence or reasoning.':aS.actionCount>0?' Contains actionable guidance.':'';
+    analysisHtml=`<p>New content added (${w} word${w!==1?'s':''}).${aNote}</p>`;
   }else if(op.t==='-'){
     kind='removed';dotCls='ci-dot-rem';badgeCls='ci-badge-high';
     beforeTxt=op.a.orig;preview=op.a.orig.slice(0,70);
     const w=words(op.a.orig).length;
-    analysisHtml=`<p>Line deleted from position ${op.a.n}: <em>${w} word${w!==1?'s':''}</em>. Absent from final version.</p>`;
+    const rS=computeSpecificity(op.a.orig);
+    const rNote=rS.numericCount>0?' ⚠ Contained data/numbers — specificity was lost.':rS.exampleCount>0?' Contained an example — verify removal was intentional.':rS.evidenceCount>0?' Contained evidence/reasoning.':rS.actionCount>0?' Contained actionable guidance.':'';
+    analysisHtml=`<p>Content removed (${w} word${w!==1?'s':''}).${rNote}</p>`;
   }
   const compHtml=(beforeTxt||afterTxt)?`<div class="ci-comparison">
     ${beforeTxt?`<div class="ci-side ci-side-before"><div class="ci-side-label">First draft</div><div class="ci-side-text">${op.t==='~'?renderWordDiff(beforeTxt,afterTxt):esc(beforeTxt)}</div></div>`:''}
@@ -817,6 +984,11 @@ async function runAnalysis(){
     el('secsGrid').appendChild(card);
   }
 
+  // Content intelligence
+  setBusy(true,'Computing content intelligence…');await tick();
+  const cvi=buildCVI(texts.ai,texts.final);
+  el('cviPanel').innerHTML=cvi.html;
+
   el('results').style.display='block';
 
   // Groq
@@ -842,57 +1014,69 @@ async function runAnalysis(){
 
   const secSumm=secReport.map(s=>`"${s.title}": intensity=${s.intensity}%, semEquiv=${s.semEquiv}, voiceShifts=${s.voiceShifts}, wChanged=${Math.max(s.wRemInMod||0,s.wAddInMod||0)}, wAdded=${s.wPureAdd}, wRemoved=${s.wPureRem}`).join('\n');
 
-  const prompt=`You are a professional copy editor reviewing a diff between two drafts. Be precise, evidence-based, and measured — judge changes the way an experienced editor would, not as an AI grading exercise. Most edits are minor even when word counts look large.
+  const prompt=`You are a senior content strategist and copy editor. You have exact algorithmic data about two drafts. Be evidence-led, measured, and direct. Judge like an editor who has read ten thousand articles — not like a bot summarising numbers.
 
-METRICS (algorithmic — semantic rewrites already excluded from intensity):
-- Edit intensity: ${st.intensity}% — "${cls}" (semantic equiv rewrites are excluded from this score)
-- Genuinely modified lines: ${st.lMod-st.semEquiv} | Added lines: ${st.lAdd} | Removed lines: ${st.lRem}
-- Semantic equivalents: ${st.semEquiv} (same idea, reworded — cosmetic, excluded from intensity)
+EDIT METRICS (semantic rewrites excluded from intensity):
+- Edit intensity: ${st.intensity}% — "${cls}"
+- Genuinely modified lines: ${st.lMod-st.semEquiv} | Added: ${st.lAdd} | Removed: ${st.lRem}
+- Semantic equivalents (cosmetic, zero content weight): ${st.semEquiv}
 - Voice shifts: ${st.voiceShifts}
-- Real word-level changes: ~${Math.max(st.wRemInMod,st.wAddInMod)} words (actual new ideas/fixes)
-- Cosmetic word-level rewrites: ~${cosmeticWordCt} words (same meaning, different phrasing — treat as near-zero work)
-- Words added (new lines): ${st.wPureAdd} | Words removed (deleted lines): ${st.wPureRem}
+- Real word-level changes: ~${Math.max(st.wRemInMod,st.wAddInMod)} words
+- Cosmetic word-level rewrites: ~${cosmeticWordCt} words
 - Word count: ${totalWO} → ${totalWF} (net ${netW>0?'+':''}${netW})
 - Avg value delta: ${(st.avgValue*100).toFixed(1)}%
+
+CONTENT INTELLIGENCE:
+- Edit type: ${cvi.editType}
+- Content score: A=${cvi.sigA.specificity} → B=${cvi.sigB.specificity} (${cvi.sigB.specificity>cvi.sigA.specificity?'improved':'reduced'})
+- Data/numbers: ${cvi.sigA.numericCount} → ${cvi.sigB.numericCount}
+- Examples: ${cvi.sigA.exampleCount} → ${cvi.sigB.exampleCount}
+- Evidence markers: ${cvi.sigA.evidenceCount} → ${cvi.sigB.evidenceCount}
+- Actionability signals: ${cvi.sigA.actionCount} → ${cvi.sigB.actionCount}
+- Vague language: ${cvi.sigA.vagueCount} → ${cvi.sigB.vagueCount}
+- New concepts in B: ${cvi.gained.slice(0,8).join(', ')||'none'}
+- Lost concepts from A: ${cvi.lost.slice(0,8).join(', ')||'none'}
+- Algorithmic reader value: ${cvi.verdict.label}
 
 SECTION BREAKDOWN:
 ${secSumm}
 
-ANNOTATED DIFF (with semantic flags):
+ANNOTATED DIFF:
 ${diffSample}
 
 RULES:
 - Say "Draft A" and "Draft B" — never "AI" or "human"
 - Every claim must cite specific before/after text from the diff
-- SEMANTIC_EQUIV lines are cosmetic rewrites — same content, just reworded. Do NOT describe them as "substantial changes", "heavy editing", or "significant work". They represent near-zero editorial effort
-- A voice shift (active↔passive) on the same idea is a minor structural tweak, not a content change
-- Only use words like "heavy", "substantial", or "major" if genuinely new information was added or meaning significantly changed
-- If most changes are SEMANTIC_EQUIV or voice-only, say so plainly — the edit was light
-- Note voice shift direction and whether it improved readability
-- Call out both improvements AND regressions honestly
+- SEMANTIC_EQUIV = cosmetic reword only. Never call it "substantial editing"
+- Only use "heavy" or "major" if genuinely new information or meaning was added
+- If specDelta is small and conceptNet is near zero, say the edit was light — do not inflate
+- Call out regressions as honestly as improvements
 
-STRUCTURE (exactly 5 sections):
+STRUCTURE (exactly 6 sections):
 
 **1. Overall verdict**
-State intensity class. What does the edit pattern reveal about Draft A's quality? Be direct.
+State intensity class and edit type (${cvi.editType}). What does the pattern reveal about the quality gap between drafts?
 
-**2. Real changes vs cosmetic changes**
-How many changes are substantive vs semantic equivalents (same idea, reworded)? Cite 2–3 specific MOD examples with before/after text.
+**2. Real vs cosmetic changes**
+How many changes were substantive vs semantic equivalents? Cite 2–3 specific MOD lines with before/after text.
 
 **3. Most impactful edits**
-Name the 2–3 changes that most improved or significantly altered the content. Quote the before/after. Explain the editorial logic.
+The 2–3 changes that most changed what a reader gets from this content. Quote the before/after. Explain the editorial logic — why does this matter to the reader?
 
-**4. Voice and structural patterns**
-Discuss voice shifts detected. Were they improvements? Any structural additions/removals that changed the content's arc?
+**4. Voice and structure**
+Voice shifts: direction, frequency, whether they improved things. Any structural additions/removals that changed the content's argument or arc?
 
 **5. Value assessment**
-Based on the avg value delta (${(st.avgValue*100).toFixed(1)}%) and evidence, did Draft B improve Draft A, regress it, or mostly restyle it? What did Draft A get right? What did Draft B improve?`;
+Did Draft B improve Draft A, regress it, or mostly restyle it? Content score shifted ${cvi.sigA.specificity}→${cvi.sigB.specificity}. What did Draft A do well that Draft B preserved or dropped?
+
+**6. Content intelligence verdict**
+Answer this directly: what does a reader of Draft B get that a reader of Draft A does not? And what did Draft A offer that Draft B removed? Ground this in the concept movement (gained: ${cvi.gained.slice(0,5).join(', ')||'none'} / lost: ${cvi.lost.slice(0,5).join(', ')||'none'}) and specificity signals. One focused paragraph. No hedging.`;
 
   try{
     const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
-      body:JSON.stringify({model,max_tokens:1800,temperature:0.05,
+      body:JSON.stringify({model,max_tokens:2400,temperature:0.05,
         messages:[{role:'system',content:'You are a precise, unbiased editorial analyst. Always cite specific diff evidence. Never invent examples.'},{role:'user',content:prompt}]
       })
     });
